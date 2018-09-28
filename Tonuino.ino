@@ -8,7 +8,7 @@
 // DFPlayer Mini
 SoftwareSerial mySoftwareSerial(2, 3); // RX, TX
 uint16_t numTracksInFolder;
-uint16_t track;
+uint16_t currentTrack;
 
 // this object stores nfc tag data
 struct nfcTagObject {
@@ -21,7 +21,7 @@ struct nfcTagObject {
 
 nfcTagObject myCard;
 
-static void nextTrack();
+static void nextTrack(uint16_t track);
 int voiceMenu(int numberOfOptions, int startMessage, int messageOffset,
               bool preview = false, int previewFromFolder = 0);
 
@@ -42,7 +42,7 @@ public:
     Serial.print("Track beendet");
     Serial.println(track);
     delay(100);
-    nextTrack();
+    nextTrack(track);
   }
   static void OnCardOnline(uint16_t code) {
     Serial.println(F("SD Karte online "));
@@ -58,46 +58,53 @@ public:
 static DFMiniMp3<SoftwareSerial, Mp3Notify> mp3(mySoftwareSerial);
 
 // Leider kann das Modul keine Queue abspielen.
-static void nextTrack() {
-  if (knownCard == false)
+static uint16_t _lastTrackFinished;
+static void nextTrack(uint16_t track) {
+  if (track == _lastTrackFinished) {
+    return;
+   }
+   _lastTrackFinished = track;
+   
+   if (knownCard == false)
     // Wenn eine neue Karte angelernt wird soll das Ende eines Tracks nicht
     // verarbeitet werden
     return;
 
   if (myCard.mode == 1) {
-    Serial.println(F("Hörspielmodus ist aktiv -> Strom sparen"));
-    mp3.sleep();
+    Serial.println(F("Hörspielmodus ist aktiv -> keinen neuen Track spielen"));
+//    mp3.sleep(); // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
   }
   if (myCard.mode == 2) {
-    if (track != numTracksInFolder) {
-      track = track + 1;
-      mp3.playFolderTrack(myCard.folder, track);
+    if (currentTrack != numTracksInFolder) {
+      currentTrack = currentTrack + 1;
+      mp3.playFolderTrack(myCard.folder, currentTrack);
       Serial.print(F("Albummodus ist aktiv -> nächster Track: "));
-      Serial.print(track);
-    } else
-      mp3.sleep();
+      Serial.print(currentTrack);
+    } else 
+//      mp3.sleep();   // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
+    { }
   }
   if (myCard.mode == 3) {
-    track = random(1, numTracksInFolder + 1);
+    currentTrack = random(1, numTracksInFolder + 1);
     Serial.print(F("Party Modus ist aktiv -> zufälligen Track spielen: "));
-    Serial.println(track);
-    mp3.playFolderTrack(myCard.folder, track);
+    Serial.println(currentTrack);
+    mp3.playFolderTrack(myCard.folder, currentTrack);
   }
   if (myCard.mode == 4) {
     Serial.println(F("Einzel Modus aktiv -> Strom sparen"));
-    mp3.sleep();
+//    mp3.sleep();      // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
   }
   if (myCard.mode == 5) {
-    if (track != numTracksInFolder) {
-      track = track + 1;
+    if (currentTrack != numTracksInFolder) {
+      currentTrack = currentTrack + 1;
       Serial.print(F("Hörbuch Modus ist aktiv -> nächster Track und "
                      "Fortschritt speichern"));
-      Serial.println(track);
-      mp3.playFolderTrack(myCard.folder, track);
+      Serial.println(currentTrack);
+      mp3.playFolderTrack(myCard.folder, currentTrack);
       // Fortschritt im EEPROM abspeichern
-      EEPROM.write(myCard.folder, track);
+      EEPROM.write(myCard.folder, currentTrack);
     } else {
-      mp3.sleep();
+//      mp3.sleep();  // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
       // Fortschritt zurück setzen
       EEPROM.write(myCard.folder, 1);
     }
@@ -107,32 +114,32 @@ static void nextTrack() {
 static void previousTrack() {
   if (myCard.mode == 1) {
     Serial.println(F("Hörspielmodus ist aktiv -> Track von vorne spielen"));
-    mp3.playFolderTrack(myCard.folder, track);
+    mp3.playFolderTrack(myCard.folder, currentTrack);
   }
   if (myCard.mode == 2) {
     Serial.println(F("Albummodus ist aktiv -> vorheriger Track"));
-    if (track != 1) {
-      track = track - 1;
+    if (currentTrack != 1) {
+      currentTrack = currentTrack - 1;
     }
-    mp3.playFolderTrack(myCard.folder, track);
+    mp3.playFolderTrack(myCard.folder, currentTrack);
   }
   if (myCard.mode == 3) {
     Serial.println(F("Party Modus ist aktiv -> Track von vorne spielen"));
-    mp3.playFolderTrack(myCard.folder, track);
+    mp3.playFolderTrack(myCard.folder, currentTrack);
   }
   if (myCard.mode == 4) {
     Serial.println(F("Einzel Modus aktiv -> Track von vorne spielen"));
-    mp3.playFolderTrack(myCard.folder, track);
+    mp3.playFolderTrack(myCard.folder, currentTrack);
   }
   if (myCard.mode == 5) {
     Serial.println(F("Hörbuch Modus ist aktiv -> vorheriger Track und "
                      "Fortschritt speichern"));
-    if (track != 1) {
-      track = track - 1;
+    if (currentTrack != 1) {
+      currentTrack = currentTrack - 1;
     }
-    mp3.playFolderTrack(myCard.folder, track);
+    mp3.playFolderTrack(myCard.folder, currentTrack);
     // Fortschritt im EEPROM abspeichern
-    EEPROM.write(myCard.folder, track);
+    EEPROM.write(myCard.folder, currentTrack);
   }
 }
 
@@ -226,7 +233,7 @@ void loop() {
     } else if (pauseButton.pressedFor(LONG_PRESS) &&
                ignorePauseButton == false) {
       if (isPlaying())
-        mp3.playAdvertisement(track);
+        mp3.playAdvertisement(currentTrack);
       else {
         knownCard = false;
         mp3.playMp3FolderTrack(800);
@@ -244,7 +251,7 @@ void loop() {
       ignoreUpButton = true;
     } else if (upButton.wasReleased()) {
       if (!ignoreUpButton)
-        nextTrack();
+        nextTrack(random(65536));
       else
         ignoreUpButton = false;
     }
@@ -271,41 +278,45 @@ void loop() {
     if (myCard.cookie == 322417479 && myCard.folder != 0 && myCard.mode != 0) {
 
       knownCard = true;
+      _lastTrackFinished = 0;
       numTracksInFolder = mp3.getFolderTrackCount(myCard.folder);
+      Serial.print(numTracksInFolder);
+      Serial.print(F(" Dateien in Ordner "));
+      Serial.println(myCard.folder);
 
       // Hörspielmodus: eine zufällige Datei aus dem Ordner
       if (myCard.mode == 1) {
         Serial.println(F("Hörspielmodus -> zufälligen Track wiedergeben"));
-        track = random(1, numTracksInFolder + 1);
-        Serial.println(track);
-        mp3.playFolderTrack(myCard.folder, track);
+        currentTrack = random(1, numTracksInFolder + 1);
+        Serial.println(currentTrack);
+        mp3.playFolderTrack(myCard.folder, currentTrack);
       }
       // Album Modus: kompletten Ordner spielen
       if (myCard.mode == 2) {
         Serial.println(F("Album Modus -> kompletten Ordner wiedergeben"));
-        track = 1;
-        mp3.playFolderTrack(myCard.folder, track);
+        currentTrack = 1;
+        mp3.playFolderTrack(myCard.folder, currentTrack);
       }
       // Party Modus: Ordner in zufälliger Reihenfolge
       if (myCard.mode == 3) {
         Serial.println(
             F("Party Modus -> Ordner in zufälliger Reihenfolge wiedergeben"));
-        track = random(1, numTracksInFolder + 1);
-        mp3.playFolderTrack(myCard.folder, track);
+        currentTrack = random(1, numTracksInFolder + 1);
+        mp3.playFolderTrack(myCard.folder, currentTrack);
       }
       // Einzel Modus: eine Datei aus dem Ordner abspielen
       if (myCard.mode == 4) {
         Serial.println(
             F("Einzel Modus -> eine Datei aus dem Odrdner abspielen"));
-        track = myCard.special;
-        mp3.playFolderTrack(myCard.folder, track);
+        currentTrack = myCard.special;
+        mp3.playFolderTrack(myCard.folder, currentTrack);
       }
       // Hörbuch Modus: kompletten Ordner spielen und Fortschritt merken
       if (myCard.mode == 5) {
         Serial.println(F("Hörbuch Modus -> kompletten Ordner spielen und "
                          "Fortschritt merken"));
-        track = EEPROM.read(myCard.folder);
-        mp3.playFolderTrack(myCard.folder, track);
+        currentTrack = EEPROM.read(myCard.folder);
+        mp3.playFolderTrack(myCard.folder, currentTrack);
       }
     }
 
@@ -560,4 +571,3 @@ void dump_byte_array(byte *buffer, byte bufferSize) {
     Serial.print(buffer[i], HEX);
   }
 }
-
