@@ -72,7 +72,7 @@ static void nextTrack(uint16_t track) {
 
   if (myCard.mode == 1) {
     Serial.println(F("Hörspielmodus ist aktiv -> keinen neuen Track spielen"));
-//    mp3.sleep(); // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
+    mp3.sleep(); // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
   }
   if (myCard.mode == 2) {
     if (currentTrack != numTracksInFolder) {
@@ -81,7 +81,7 @@ static void nextTrack(uint16_t track) {
       Serial.print(F("Albummodus ist aktiv -> nächster Track: "));
       Serial.print(currentTrack);
     } else 
-//      mp3.sleep();   // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
+      mp3.sleep();   // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
     { }
   }
   if (myCard.mode == 3) {
@@ -92,7 +92,7 @@ static void nextTrack(uint16_t track) {
   }
   if (myCard.mode == 4) {
     Serial.println(F("Einzel Modus aktiv -> Strom sparen"));
-//    mp3.sleep();      // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
+    mp3.sleep();      // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
   }
   if (myCard.mode == 5) {
     if (currentTrack != numTracksInFolder) {
@@ -104,7 +104,7 @@ static void nextTrack(uint16_t track) {
       // Fortschritt im EEPROM abspeichern
       EEPROM.write(myCard.folder, currentTrack);
     } else {
-//      mp3.sleep();  // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
+      mp3.sleep();  // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
       // Fortschritt zurück setzen
       EEPROM.write(myCard.folder, 1);
     }
@@ -180,6 +180,7 @@ void setup() {
 
   Serial.println(F("TonUINO Version 2.0"));
   Serial.println(F("(c) Thorsten Voß"));
+  Serial.println(F("Adapted by Kai"))
 
   // Knöpfe mit PullUp
   pinMode(buttonPause, INPUT_PULLUP);
@@ -191,7 +192,8 @@ void setup() {
 
   // DFPlayer Mini initialisieren
   mp3.begin();
-  mp3.setVolume(15);
+  mp3.setVolume(5); // 15
+  mp3.setEq(DfMp3_Eq_Normal);
 
   // NFC Leser initialisieren
   SPI.begin();        // Init SPI bus
@@ -248,6 +250,7 @@ void loop() {
     if (upButton.pressedFor(LONG_PRESS)) {
       Serial.println(F("Volume Up"));
       mp3.increaseVolume();
+      Serial.println(mp3.getVolume());
       ignoreUpButton = true;
     } else if (upButton.wasReleased()) {
       if (!ignoreUpButton)
@@ -259,6 +262,7 @@ void loop() {
     if (downButton.pressedFor(LONG_PRESS)) {
       Serial.println(F("Volume Down"));
       mp3.decreaseVolume();
+      Serial.println(mp3.getVolume());
       ignoreDownButton = true;
     } else if (downButton.wasReleased()) {
       if (!ignoreDownButton)
@@ -328,6 +332,9 @@ void loop() {
   }
   mfrc522.PICC_HaltA();
   mfrc522.PCD_StopCrypto1();
+
+  // set RFID in sleep mode
+  mfrc522.PCD_SoftPowerDown();
 }
 
 int voiceMenu(int numberOfOptions, int startMessage, int messageOffset,
