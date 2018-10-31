@@ -5,6 +5,11 @@
 #include <SPI.h>
 #include <SoftwareSerial.h>
 
+// define global constants
+const uint8_t mp3StartVolume = 10;                  // initial volume of DFPlayer Mini
+const uint8_t mp3MaxVolume = 20;                    // maximal volume of DFPlayer Mini
+
+
 // DFPlayer Mini
 SoftwareSerial mySoftwareSerial(2, 3); // RX, TX
 uint16_t numTracksInFolder;
@@ -32,12 +37,39 @@ bool knownCard = false;
 //
 class Mp3Notify {
 public:
-  static void OnError(uint16_t errorCode) {
-    // see DfMp3_Error for code meaning
-    Serial.println();
-    Serial.print("Com Error ");
-    Serial.println(errorCode);
-  }
+      static void OnError(uint16_t returnValue) {
+      Serial.print(F("mp3 | "));
+      switch (returnValue) {
+        case DfMp3_Error_Busy:
+          Serial.print(F("busy"));
+          break;
+        case DfMp3_Error_Sleeping:
+          Serial.print(F("sleep"));
+          break;
+        case DfMp3_Error_SerialWrongStack:
+          Serial.print(F("serial stack"));
+          break;
+        case DfMp3_Error_CheckSumNotMatch:
+          Serial.print(F("checksum"));
+          break;
+        case DfMp3_Error_FileIndexOut:
+          Serial.print(F("file index"));
+          break;
+        case DfMp3_Error_FileMismatch:
+          Serial.print(F("file mismatch"));
+          break;
+        case DfMp3_Error_Advertise:
+          Serial.print(F("advertise"));
+          break;
+        case DfMp3_Error_General:
+          Serial.print(F("general"));
+          break;
+        default:
+          Serial.print(F("unknown"));
+          break;
+      }
+      Serial.println(F(" error"));
+    }
   static void OnPlayFinished(uint16_t track) {
     Serial.print("Track beendet");
     Serial.println(track);
@@ -180,7 +212,7 @@ void setup() {
 
   Serial.println(F("TonUINO Version 2.0"));
   Serial.println(F("(c) Thorsten Voß"));
-  Serial.println(F("Adapted by Kai"))
+  Serial.println(F("Adapted by Kai"));
 
   // Knöpfe mit PullUp
   pinMode(buttonPause, INPUT_PULLUP);
@@ -192,7 +224,7 @@ void setup() {
 
   // DFPlayer Mini initialisieren
   mp3.begin();
-  mp3.setVolume(5); // 15
+  mp3.setVolume(mp3StartVolume); // 15
   mp3.setEq(DfMp3_Eq_Normal);
 
   // NFC Leser initialisieren
@@ -213,7 +245,9 @@ void setup() {
       EEPROM.write(i, 0);
     }
   }
-
+  // set RFID in sleep mode
+  Serial.println("set RFID into SoftPowerDown mode....");
+  mfrc522.PCD_SoftPowerDown();
 }
 
 void loop() {
@@ -248,9 +282,13 @@ void loop() {
     }
 
     if (upButton.pressedFor(LONG_PRESS)) {
-      Serial.println(F("Volume Up"));
-      mp3.increaseVolume();
-      Serial.println(mp3.getVolume());
+      Serial.println(F("Volume Up pressed "));
+      uint8_t mp3CurrentVolume = mp3.getVolume();
+      if (mp3CurrentVolume < mp3MaxVolume) {
+        Serial.print(F("increase volume to "));
+        Serial.println(mp3CurrentVolume + 1);
+        mp3.increaseVolume();
+      }
       ignoreUpButton = true;
     } else if (upButton.wasReleased()) {
       if (!ignoreUpButton)
@@ -260,9 +298,18 @@ void loop() {
     }
 
     if (downButton.pressedFor(LONG_PRESS)) {
-      Serial.println(F("Volume Down"));
+      Serial.println(F("Volume Down pressed"));
+      uint8_t mp3CurrentVolume = mp3.getVolume();
+      if (mp3CurrentVolume > 0) {
+        if (mp3CurrentVolume == 1) Serial.println(F("mute"));
+        else {
+          Serial.print(F("decrease volume to "));
+          Serial.println(mp3CurrentVolume - 1);
+      }
       mp3.decreaseVolume();
-      Serial.println(mp3.getVolume());
+    }
+    else Serial.println(F("mute"));
+
       ignoreDownButton = true;
     } else if (downButton.wasReleased()) {
       if (!ignoreDownButton)
@@ -334,6 +381,7 @@ void loop() {
   mfrc522.PCD_StopCrypto1();
 
   // set RFID in sleep mode
+  Serial.println("set RFID into SoftPowerDown mode....");
   mfrc522.PCD_SoftPowerDown();
 }
 
