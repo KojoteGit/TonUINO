@@ -6,8 +6,8 @@
 #include <SoftwareSerial.h>
 
 // define global constants
-const uint8_t mp3StartVolume = 10;                  // initial volume of DFPlayer Mini
-const uint8_t mp3MaxVolume = 20;                    // maximal volume of DFPlayer Mini
+const uint8_t mp3StartVolume = 15;                  // initial volume of DFPlayer Mini
+const uint8_t mp3MaxVolume = 25;                    // maximal volume of DFPlayer Mini
 
 
 // DFPlayer Mini
@@ -104,7 +104,7 @@ static void nextTrack(uint16_t track) {
 
   if (myCard.mode == 1) {
     Serial.println(F("Hörspielmodus ist aktiv -> keinen neuen Track spielen"));
-    mp3.sleep(); // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
+    //mp3.sleep(); // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
   }
   if (myCard.mode == 2) {
     if (currentTrack != numTracksInFolder) {
@@ -113,7 +113,7 @@ static void nextTrack(uint16_t track) {
       Serial.print(F("Albummodus ist aktiv -> nächster Track: "));
       Serial.print(currentTrack);
     } else 
-      mp3.sleep();   // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
+      //mp3.sleep();   // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
     { }
   }
   if (myCard.mode == 3) {
@@ -124,7 +124,7 @@ static void nextTrack(uint16_t track) {
   }
   if (myCard.mode == 4) {
     Serial.println(F("Einzel Modus aktiv -> Strom sparen"));
-    mp3.sleep();      // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
+    //mp3.sleep();      // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
   }
   if (myCard.mode == 5) {
     if (currentTrack != numTracksInFolder) {
@@ -136,7 +136,7 @@ static void nextTrack(uint16_t track) {
       // Fortschritt im EEPROM abspeichern
       EEPROM.write(myCard.folder, currentTrack);
     } else {
-      mp3.sleep();  // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
+     // mp3.sleep();  // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
       // Fortschritt zurück setzen
       EEPROM.write(myCard.folder, 1);
     }
@@ -224,6 +224,7 @@ void setup() {
 
   // DFPlayer Mini initialisieren
   mp3.begin();
+  delay(2000); //wait for mp3 init
   mp3.setVolume(mp3StartVolume); // 15
   mp3.setEq(DfMp3_Eq_Normal);
 
@@ -245,9 +246,12 @@ void setup() {
       EEPROM.write(i, 0);
     }
   }
+
+  // play ready sound
+  mp3.playMp3FolderTrack(500);
   // set RFID in sleep mode
-  Serial.println("set RFID into SoftPowerDown mode....");
-  mfrc522.PCD_SoftPowerDown();
+  //Serial.println("set RFID into SoftPowerDown mode....");
+  //mfrc522.PCD_SoftPowerDown();
 }
 
 void loop() {
@@ -381,8 +385,8 @@ void loop() {
   mfrc522.PCD_StopCrypto1();
 
   // set RFID in sleep mode
-  Serial.println("set RFID into SoftPowerDown mode....");
-  mfrc522.PCD_SoftPowerDown();
+  //Serial.println("set RFID into SoftPowerDown mode....");
+  //mfrc522.PCD_SoftPowerDown();
 }
 
 int voiceMenu(int numberOfOptions, int startMessage, int messageOffset,
