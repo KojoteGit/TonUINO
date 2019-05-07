@@ -9,6 +9,8 @@
 const uint8_t mp3StartVolume = 15;                  // initial volume of DFPlayer Mini
 const uint8_t mp3MaxVolume = 25;                    // maximal volume of DFPlayer Mini
 
+#define WAIT_AFTER_LONG_PRESS 1000 //wait after long button press
+
 
 // DFPlayer Mini
 SoftwareSerial mySoftwareSerial(2, 3); // RX, TX
@@ -85,6 +87,15 @@ public:
   static void OnCardRemoved(uint16_t code) {
     Serial.println(F("SD Karte entfernt "));
   }
+  static void OnUsbOnline(uint16_t code) {
+      Serial.println(F("USB online "));
+  }
+  static void OnUsbInserted(uint16_t code) {
+      Serial.println(F("USB bereit "));
+  }
+  static void OnUsbRemoved(uint16_t code) {
+    Serial.println(F("USB entfernt "));
+  }
 };
 
 static DFMiniMp3<SoftwareSerial, Mp3Notify> mp3(mySoftwareSerial);
@@ -96,7 +107,7 @@ static void nextTrack(uint16_t track) {
     return;
    }
    _lastTrackFinished = track;
-   
+
    if (knownCard == false)
     // Wenn eine neue Karte angelernt wird soll das Ende eines Tracks nicht
     // verarbeitet werden
@@ -112,7 +123,7 @@ static void nextTrack(uint16_t track) {
       mp3.playFolderTrack(myCard.folder, currentTrack);
       Serial.print(F("Albummodus ist aktiv -> nächster Track: "));
       Serial.print(currentTrack);
-    } else 
+    } else
       //mp3.sleep();   // Je nach Modul kommt es nicht mehr zurück aus dem Sleep!
     { }
   }
@@ -286,40 +297,35 @@ void loop() {
     }
 
     if (upButton.pressedFor(LONG_PRESS)) {
-      Serial.println(F("Volume Up pressed "));
-      uint8_t mp3CurrentVolume = mp3.getVolume();
-      if (mp3CurrentVolume < mp3MaxVolume) {
-        Serial.print(F("increase volume to "));
-        Serial.println(mp3CurrentVolume + 1);
-        mp3.increaseVolume();
-      }
+      Serial.println(F("Up long pressed "));
+      //volumeUp();
+      nextTrack(random(65536));
+      delay(WAIT_AFTER_LONG_PRESS); // wait
       ignoreUpButton = true;
     } else if (upButton.wasReleased()) {
       if (!ignoreUpButton)
-        nextTrack(random(65536));
+        //nextTrack(random(65536));
+        volumeUp();
       else
+      {
         ignoreUpButton = false;
+      }
     }
 
     if (downButton.pressedFor(LONG_PRESS)) {
-      Serial.println(F("Volume Down pressed"));
-      uint8_t mp3CurrentVolume = mp3.getVolume();
-      if (mp3CurrentVolume > 0) {
-        if (mp3CurrentVolume == 1) Serial.println(F("mute"));
-        else {
-          Serial.print(F("decrease volume to "));
-          Serial.println(mp3CurrentVolume - 1);
-      }
-      mp3.decreaseVolume();
-    }
-    else Serial.println(F("mute"));
-
+      Serial.println(F("Down long pressed"));
+      //volumeDown();
+      previousTrack();
+      delay(WAIT_AFTER_LONG_PRESS); //wait
       ignoreDownButton = true;
     } else if (downButton.wasReleased()) {
-      if (!ignoreDownButton)
-        previousTrack();
-      else
+      if (!ignoreDownButton) {
+         //previousTrack();
+        volumeDown();
+      }
+      else {
         ignoreDownButton = false;
+      }
     }
     // Ende der Buttons
   } while (!mfrc522.PICC_IsNewCardPresent());
@@ -436,7 +442,7 @@ int voiceMenu(int numberOfOptions, int startMessage, int messageOffset,
       } else
         ignoreUpButton = false;
     }
-    
+
     if (downButton.pressedFor(LONG_PRESS)) {
       returnValue = max(returnValue - 10, 1);
       mp3.playMp3FolderTrack(messageOffset + returnValue);
@@ -629,4 +635,26 @@ void dump_byte_array(byte *buffer, byte bufferSize) {
     Serial.print(buffer[i] < 0x10 ? " 0" : " ");
     Serial.print(buffer[i], HEX);
   }
+}
+
+void volumeUp() {
+  uint8_t mp3CurrentVolume = mp3.getVolume();
+  if (mp3CurrentVolume < mp3MaxVolume) {
+    Serial.print(F("increase volume to "));
+    Serial.println(mp3CurrentVolume + 1);
+    mp3.increaseVolume();
+  }
+}
+
+void volumeDown() {
+  uint8_t mp3CurrentVolume = mp3.getVolume();
+  if (mp3CurrentVolume > 0) {
+    if (mp3CurrentVolume == 1) Serial.println(F("mute"));
+    else {
+      Serial.print(F("decrease volume to "));
+      Serial.println(mp3CurrentVolume - 1);
+  }
+  mp3.decreaseVolume();
+  }
+  else Serial.println(F("mute"));
 }
