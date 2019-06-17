@@ -5,12 +5,20 @@
 #include <SPI.h>
 #include <SoftwareSerial.h>
 
+// Werte für Akkuüberwachung
+#define VOLTAGE_REFERENCE_VIN 4.99
+#define VOLTAGE_PIN A5
+#define VOLTAGE_NUM_SAMPLES 10
+#define VOLTAGE_MIN_WARNING 3.3
+boolean wasVoltageWarned = false;
+
+float getVoltage();
+
 // define global constants
 const uint8_t mp3StartVolume = 15;                  // initial volume of DFPlayer Mini
 const uint8_t mp3MaxVolume = 25;                    // maximal volume of DFPlayer Mini
 
 #define WAIT_AFTER_LONG_PRESS 1000 //wait after long button press
-
 
 // DFPlayer Mini
 SoftwareSerial mySoftwareSerial(2, 3); // RX, TX
@@ -327,8 +335,17 @@ void loop() {
         ignoreDownButton = false;
       }
     }
+
+    // Akku prüfen
+    if (getVoltage() < VOLTAGE_MIN_WARNING && !wasVoltageWarned) {
+      mp3.playAdvertisement(501);
+      wasVoltageWarned = true;
+    }
+
     // Ende der Buttons
   } while (!mfrc522.PICC_IsNewCardPresent());
+
+  wasVoltageWarned = false;
 
   // RFID Karte wurde aufgelegt
 
@@ -657,4 +674,18 @@ void volumeDown() {
   mp3.decreaseVolume();
   }
   else Serial.println(F("mute"));
+}
+
+float getVoltage() {
+	int sum = 0;                    // sum of samples taken
+	unsigned char sample_count = 0; // current sample number
+	float voltage = 0.0;            // calculated voltage
+
+	while (sample_count < VOLTAGE_NUM_SAMPLES) {
+    sum += analogRead(VOLTAGE_PIN);
+    sample_count++;
+    //delay(10);
+	}
+	voltage = ((float)sum / (float)VOLTAGE_NUM_SAMPLES * VOLTAGE_REFERENCE_VIN) / 1024.0;
+	return voltage;
 }
