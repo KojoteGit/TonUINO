@@ -9,7 +9,7 @@
 #define VOLTAGE_REFERENCE_VIN 4.99
 #define VOLTAGE_PIN A5
 #define VOLTAGE_NUM_SAMPLES 10
-#define VOLTAGE_MIN_WARNING 3.3
+#define VOLTAGE_MIN_WARNING 3.4
 boolean wasVoltageWarned = false;
 
 float getVoltage();
@@ -338,7 +338,13 @@ void loop() {
 
     // Akku prüfen
     if (getVoltage() < VOLTAGE_MIN_WARNING && !wasVoltageWarned) {
-      mp3.playAdvertisement(501);
+      //mp3.playAdvertisement(501);
+      if (isPlaying()) {
+        mp3.playAdvertisement(501);
+      }
+      else {
+        mp3.playMp3FolderTrack(501);
+      }
       wasVoltageWarned = true;
     }
 
@@ -688,4 +694,8 @@ float getVoltage() {
 	}
 	voltage = ((float)sum / (float)VOLTAGE_NUM_SAMPLES * VOLTAGE_REFERENCE_VIN) / 1024.0;
 	return voltage;
+}
+
+void announceBattery() {
+
 }
