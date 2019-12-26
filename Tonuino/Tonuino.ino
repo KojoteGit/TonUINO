@@ -16,7 +16,7 @@ float getVoltage();
 
 // define global constants
 const uint8_t mp3StartVolume = 15;                  // initial volume of DFPlayer Mini
-const uint8_t mp3MaxVolume = 25;                    // maximal volume of DFPlayer Mini
+const uint8_t mp3MaxVolume = 30;                    // maximal volume of DFPlayer Mini
 
 #define WAIT_AFTER_LONG_PRESS 1000 //wait after long button press
 
