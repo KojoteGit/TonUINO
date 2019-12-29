@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <DFMiniMp3.h>
 #include <EEPROM.h>
 #include <JC_Button.h>
@@ -55,7 +56,7 @@ struct adminSettings {
   uint8_t maxVolume;
   uint8_t minVolume;
   uint8_t initVolume;
-  uint8_t eq;
+  uint16_t eq;
   bool locked;
   long standbyTimer;
   bool invertVolumeButtons;
@@ -79,6 +80,16 @@ void writeCard(nfcTagObject nfcTag);
 void dump_byte_array(byte * buffer, byte bufferSize);
 void adminMenu(bool fromCard = false);
 bool knownCard = false;
+
+// additional method definition
+void setstandbyTimer();
+void playFolder();
+void playShortCut(uint8_t shortCut) ;
+bool readCard(nfcTagObject * nfcTag);
+void setupCard();
+bool askCode(uint8_t *code) ;
+void resetCard();
+bool setupFolder(folderSettings * theFolder) ;
 
 // implement a notification class,
 // its member methods will get called
