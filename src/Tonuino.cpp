@@ -18,6 +18,10 @@
     Information and contribution at https://tonuino.de.
 */
 
+/* 
+   Adapted by Kai
+*/
+
 // uncomment the below line to enable five button support
 //#define FIVEBUTTONS
 
@@ -90,6 +94,15 @@ void setupCard();
 bool askCode(uint8_t *code) ;
 void resetCard();
 bool setupFolder(folderSettings * theFolder) ;
+
+// Werte für Akkuüberwachung
+#define VOLTAGE_REFERENCE_VIN 4.99
+#define VOLTAGE_PIN A5
+#define VOLTAGE_NUM_SAMPLES 10
+#define VOLTAGE_MIN_WARNING 3.3
+boolean wasVoltageWarned = false;
+
+float getVoltage();
 
 // implement a notification class,
 // its member methods will get called
@@ -748,6 +761,7 @@ void setup() {
   Serial.println(F("TonUINO Version 2.1"));
   Serial.println(F("created by Thorsten Voß and licensed under GNU/GPL."));
   Serial.println(F("Information and contribution at https://tonuino.de.\n"));
+  Serial.println(F("Adapted by Kai"));
 
   // Busy Pin
   pinMode(busyPin, INPUT);
@@ -1099,7 +1113,22 @@ void loop() {
     }
 #endif
     // Ende der Buttons
+// Akku prüfen
+    if (getVoltage() < VOLTAGE_MIN_WARNING && !wasVoltageWarned) {
+      mp3.playAdvertisement(501);
+      //mp3.playAdvertisement(501);
+      if (isPlaying()) {
+        mp3.playAdvertisement(501);
+      }
+      else {
+        mp3.playMp3FolderTrack(501);
+      }
+      wasVoltageWarned = true;
+    }
+
   } while (!mfrc522.PICC_IsNewCardPresent());
+
+   wasVoltageWarned = false;
 
   // RFID Karte wurde aufgelegt
 
@@ -1812,4 +1841,18 @@ bool checkTwo ( uint8_t a[], uint8_t b[] ) {
     }
   }
   return true;
+}
+
+float getVoltage() {
+	int sum = 0;                    // sum of samples taken
+	unsigned char sample_count = 0; // current sample number
+	float voltage = 0.0;            // calculated voltage
+
+	while (sample_count < VOLTAGE_NUM_SAMPLES) {
+    sum += analogRead(VOLTAGE_PIN);
+    sample_count++;
+    //delay(10);
+	}
+	voltage = ((float)sum / (float)VOLTAGE_NUM_SAMPLES * VOLTAGE_REFERENCE_VIN) / 1024.0;
+	return voltage;
 }
