@@ -96,24 +96,58 @@ void resetCard();
 bool setupFolder(folderSettings * theFolder) ;
 
 // Werte für Akkuüberwachung
+#define BATTERYCHECK 1
+#ifdef BATTERYCHECK
 #define VOLTAGE_REFERENCE_VIN 4.99
 #define VOLTAGE_PIN A5
 #define VOLTAGE_NUM_SAMPLES 10
 #define VOLTAGE_MIN_WARNING 3.3
 boolean wasVoltageWarned = false;
-
 float getVoltage();
-
+#endif
 // implement a notification class,
 // its member methods will get called
 //
 class Mp3Notify {
   public:
-    static void OnError(uint16_t errorCode) {
+    /*static void OnError(uint16_t errorCode) {
       // see DfMp3_Error for code meaning
       Serial.println();
       Serial.print("Com Error ");
       Serial.println(errorCode);
+    } */
+    static void OnError(uint16_t returnValue) {
+      Serial.print(F("mp3 | "));
+      switch (returnValue) {
+        case DfMp3_Error_Busy:
+          Serial.print(F("busy"));
+          break;
+        case DfMp3_Error_Sleeping:
+          Serial.print(F("sleep"));
+          break;
+        case DfMp3_Error_SerialWrongStack:
+          Serial.print(F("serial stack"));
+          break;
+        case DfMp3_Error_CheckSumNotMatch:
+          Serial.print(F("checksum"));
+          break;
+        case DfMp3_Error_FileIndexOut:
+          Serial.print(F("file index"));
+          break;
+        case DfMp3_Error_FileMismatch:
+          Serial.print(F("file mismatch"));
+          break;
+        case DfMp3_Error_Advertise:
+          Serial.print(F("advertise"));
+          break;
+        case DfMp3_Error_General:
+          Serial.print(F("general"));
+          break;
+        default:
+          Serial.print(F("unknown"));
+          break;
+      }
+      Serial.println(F(" error"));
     }
     static void OnPlayFinished(uint16_t track) {
       //      Serial.print("Track beendet");
@@ -1113,6 +1147,7 @@ void loop() {
     }
 #endif
     // Ende der Buttons
+#ifdef BATTERYCHECK
 // Akku prüfen
     if (getVoltage() < VOLTAGE_MIN_WARNING && !wasVoltageWarned) {
       mp3.playAdvertisement(501);
@@ -1125,11 +1160,13 @@ void loop() {
       }
       wasVoltageWarned = true;
     }
+  #endif
 
   } while (!mfrc522.PICC_IsNewCardPresent());
 
-   wasVoltageWarned = false;
-
+  #ifdef BATTERYCHECK
+    wasVoltageWarned = false;
+  #endif
   // RFID Karte wurde aufgelegt
 
   if (!mfrc522.PICC_ReadCardSerial())
