@@ -6,6 +6,8 @@
 #include <SPI.h>
 #include <SoftwareSerial.h>
 #include <avr/sleep.h>
+//#include <FastLED.h>
+#include <Adafruit_NeoPixel.h>
 
 /*
    _____         _____ _____ _____ _____
@@ -21,6 +23,28 @@
 /* 
    Adapted by Kai
 */
+#define LED_USE 1
+
+#ifdef LED_USE
+  #define NUM_LEDS 7
+  #define DATA_PIN 6
+  //CRGB leds[NUM_LEDS];
+  Adafruit_NeoPixel leds(NUM_LEDS, DATA_PIN, NEO_RGBW);
+  // Zählvarbiablen
+  uint16_t led_loopCountdown;     // Runterzählen der Loops
+  uint16_t led_LoopCountWait;  // Definierte Anzahl wieviele Loops runtergezählt werden sollen, also wie lange gewartet wird
+  uint8_t led_animationCountdown; // Wie oft die einmalige Animation ausgeführt wird bevor es zurück in die Hauptschleife (Animationsmodus 0) geht
+  uint8_t led_x;                  //
+  uint8_t led_y;                  //
+  uint8_t led_z;                  //
+  uint8_t led_i;                  //
+  uint32_t led_lsrColors;                             // Zwischenspeicher einer Farbe
+  uint8_t led_lsrColorR[NUM_LEDS];                   // Zwischenspeicher des Rot-Wertes für alle LEDs
+  uint8_t led_lsrColorG[NUM_LEDS];                   // Zwischenspeicher des Grün-Wertes für alle LEDs
+  uint8_t led_lsrColorB[NUM_LEDS];                   // Zwischenspeicher des Blau-Wertes für alle LEDs
+
+  void led_rainbow();
+#endif
 
 // uncomment the below line to enable five button support
 //#define FIVEBUTTONS
@@ -849,6 +873,10 @@ void setup() {
 
   // Start Shortcut "at Startup" - e.g. Welcome Sound
   playShortCut(3);
+
+  #ifdef LED_USE
+  leds.begin();
+   #endif
 }
 
 void readButtons() {
@@ -1160,6 +1188,10 @@ void loop() {
       }
       wasVoltageWarned = true;
     }
+  #endif
+
+  #ifdef LED_USE
+  led_rainbow();
   #endif
 
   } while (!mfrc522.PICC_IsNewCardPresent());
@@ -1893,3 +1925,38 @@ float getVoltage() {
 	voltage = ((float)sum / (float)VOLTAGE_NUM_SAMPLES * VOLTAGE_REFERENCE_VIN) / 1024.0;
 	return voltage;
 }
+
+#ifdef LED_USE
+void led_rainbow() {
+  do
+  {
+    for ( led_i = 0; led_i < leds.numPixels(); led_i++)
+    {
+      led_lsrColors = leds.ColorHSV(led_i * 65536 / leds.numPixels(), 255, 30);
+      leds.setPixelColor(led_i, led_lsrColors);
+      led_lsrColorR[led_i] = (led_lsrColors >> 16 & 0xFF);
+      led_lsrColorG[led_i] = (led_lsrColors >> 8 & 0xFF);
+      led_lsrColorB[led_i] = (led_lsrColors & 0xFF);
+    }
+    led_x++;
+  } while (led_x < leds.numPixels());
+
+  // Animation definieren: Rotation im Uhrzeigersinn
+  led_y++;
+  led_x = 0;
+  if (led_y >= leds.numPixels())
+  {
+    led_y = 0;
+  }
+  do
+  {
+    for (led_i = 0; led_i < leds.numPixels(); led_i++)
+    {
+      leds.setPixelColor((led_i + led_y) % leds.numPixels(), led_lsrColorR[led_i], led_lsrColorG[led_i], led_lsrColorB[led_i]);
+    }
+    led_x++;
+  } while (led_x < leds.numPixels());
+
+  leds.show();
+}
+#endif
