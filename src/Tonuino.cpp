@@ -31,11 +31,12 @@
 static Adafruit_NeoPixel leds(NUM_LEDS, LED_DATA_PIN, NEO_GRB + NEO_KHZ800);
 // Zählvarbiablen
 uint8_t led_loopCountdown;       // Runterzählen der Loops
-uint8_t led_LoopCountWait = 255; // Definierte Anzahl wieviele Loops runtergezählt werden sollen, also wie lange gewartet wird
+uint8_t led_LoopCountWait = 255; // Definierte Anzahl wieviele Loops runtergezählt werden sollen, also wie lange gewartet wird (Max 255)
 uint8_t led_animationCountdown;  // Wie oft die einmalige Animation ausgeführt wird bevor es zurück in die Hauptschleife (Animationsmodus 0) geht
 uint8_t led_currentColorOfCycle;
 
-static uint32_t ColorCycle[7]{
+#define NUM_COLORS 7
+static uint32_t ColorCycle[NUM_COLORS]{
     leds.Color(255, 0, 0),     //rot
     leds.Color(0, 255, 0),     //grün
     leds.Color(0, 0, 255),     //blau
@@ -883,6 +884,7 @@ void setup() {
   leds.begin();
   leds.clear();
   leds.setBrightness(20);
+  leds.show();
 #endif
 }
 
@@ -1186,7 +1188,7 @@ void loop() {
     // Ende der Buttons
 #ifdef BATTERYCHECK
 // Akku prüfen
-    if (getVoltage() < VOLTAGE_MIN_WARNING && !wasVoltageWarned) {
+    if (getVoltage() < VOLTAGE_MIN_WARNING && !wasVoltageWarned && getVoltage() > 1) {
       mp3.playAdvertisement(501);
       //mp3.playAdvertisement(501);
       if (isPlaying()) {
@@ -1945,7 +1947,6 @@ float getVoltage() {
 	while (sample_count < VOLTAGE_NUM_SAMPLES) {
     sum += analogRead(VOLTAGE_PIN);
     sample_count++;
-    //delay(10);
 	}
 	voltage = ((float)sum / (float)VOLTAGE_NUM_SAMPLES * VOLTAGE_REFERENCE_VIN) / 1024.0;
 	return voltage;
@@ -1967,7 +1968,7 @@ void led_process_cycle()
 
     led_loopCountdown = led_LoopCountWait;
 
-    if (led_currentColorOfCycle == NUM_LEDS)
+    if (led_currentColorOfCycle == NUM_COLORS)
     {
       led_currentColorOfCycle = 0;
     }
