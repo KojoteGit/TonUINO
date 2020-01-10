@@ -6,6 +6,8 @@
 #include <SPI.h>
 #include <SoftwareSerial.h>
 #include <avr/sleep.h>
+//#include <FastLED.h>
+#include <Adafruit_NeoPixel.h>
 
 /*
    _____         _____ _____ _____ _____
@@ -21,6 +23,31 @@
 /* 
    Adapted by Kai
 */
+#define LED_USE 1
+
+#ifdef LED_USE
+#define NUM_LEDS 7
+#define LED_DATA_PIN 6
+static Adafruit_NeoPixel leds(NUM_LEDS, LED_DATA_PIN, NEO_GRB + NEO_KHZ800);
+// Zählvarbiablen
+uint8_t led_loopCountdown;       // Runterzählen der Loops
+uint8_t led_LoopCountWait = 255; // Definierte Anzahl wieviele Loops runtergezählt werden sollen, also wie lange gewartet wird (Max 255)
+uint8_t led_animationCountdown;  // Wie oft die einmalige Animation ausgeführt wird bevor es zurück in die Hauptschleife (Animationsmodus 0) geht
+uint8_t led_currentColorOfCycle;
+
+#define NUM_COLORS 7
+static uint32_t ColorCycle[NUM_COLORS]{
+    leds.Color(255, 0, 0),     //rot
+    leds.Color(0, 255, 0),     //grün
+    leds.Color(0, 0, 255),     //blau
+    leds.Color(255, 255, 0),   //gelb
+    leds.Color(0, 255, 255),   //cyan
+    leds.Color(255, 255, 255), //weiß
+    leds.Color(255, 165, 0)    //orange
+};
+
+void led_process_cycle();
+#endif
 
 // uncomment the below line to enable five button support
 //#define FIVEBUTTONS
@@ -851,6 +878,14 @@ void setup() {
 
   // Start Shortcut "at Startup" - e.g. Welcome Sound
   playShortCut(3);
+
+#ifdef LED_USE
+  Serial.println(F("init adafruit led"));
+  leds.begin();
+  leds.clear();
+  leds.setBrightness(20);
+  leds.show();
+#endif
 }
 
 void readButtons() {
@@ -1153,7 +1188,7 @@ void loop() {
     // Ende der Buttons
 #ifdef BATTERYCHECK
 // Akku prüfen
-    if (getVoltage() < VOLTAGE_MIN_WARNING && !wasVoltageWarned) {
+    if (getVoltage() < VOLTAGE_MIN_WARNING && !wasVoltageWarned && getVoltage() > 1) {
       mp3.playAdvertisement(501);
       //mp3.playAdvertisement(501);
       if (isPlaying()) {
@@ -1165,6 +1200,27 @@ void loop() {
       wasVoltageWarned = true;
     }
   #endif
+
+#ifdef LED_USE
+    if (!wasVoltageWarned) {
+      if (isPlaying())
+      {
+        led_process_cycle();
+      }
+      else
+      {
+        leds.clear();
+        leds.show();
+      }
+    }
+    else {
+      // wenn Akkuspannung zu gering, dann nur mittlere LED in rot darstellen
+      leds.clear();
+      leds.setPixelColor(0, leds.Color(255,0,0));
+      leds.show();
+    }
+
+#endif
 
   } while (!mfrc522.PICC_IsNewCardPresent());
 
@@ -1891,8 +1947,32 @@ float getVoltage() {
 	while (sample_count < VOLTAGE_NUM_SAMPLES) {
     sum += analogRead(VOLTAGE_PIN);
     sample_count++;
-    //delay(10);
 	}
 	voltage = ((float)sum / (float)VOLTAGE_NUM_SAMPLES * VOLTAGE_REFERENCE_VIN) / 1024.0;
 	return voltage;
 }
+
+#ifdef LED_USE
+
+void led_process_cycle()
+{
+  if (led_loopCountdown == 0)
+  {
+    leds.clear();
+    for (int i = 0; i < NUM_LEDS; i++)
+    {
+      leds.setPixelColor(i, ColorCycle[led_currentColorOfCycle]);
+      leds.show();
+    }
+    led_currentColorOfCycle++;
+
+    led_loopCountdown = led_LoopCountWait;
+
+    if (led_currentColorOfCycle == NUM_COLORS)
+    {
+      led_currentColorOfCycle = 0;
+    }
+  }
+  led_loopCountdown--;
+}
+#endif
