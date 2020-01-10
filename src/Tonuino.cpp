@@ -877,7 +877,7 @@ void setup() {
 
 
   // Start Shortcut "at Startup" - e.g. Welcome Sound
-  playShortCut(3);
+  //playShortCut(3);
 
 #ifdef LED_USE
   Serial.println(F("init adafruit led"));
@@ -886,6 +886,9 @@ void setup() {
   leds.setBrightness(20);
   leds.show();
 #endif
+
+ // play ready sound
+  mp3.playMp3FolderTrack(500);
 }
 
 void readButtons() {
