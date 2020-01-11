@@ -27,7 +27,8 @@
 
 #ifdef LED_USE
 #define NUM_LEDS 7
-#define LED_DATA_PIN 6
+#define LED_DATA_PIN 7
+#define LED_BRIGHTNESS 64 // max 255
 static Adafruit_NeoPixel leds(NUM_LEDS, LED_DATA_PIN, NEO_GRB + NEO_KHZ800);
 // Zählvarbiablen
 uint8_t led_loopCountdown;       // Runterzählen der Loops
@@ -883,7 +884,7 @@ void setup() {
   Serial.println(F("init adafruit led"));
   leds.begin();
   leds.clear();
-  leds.setBrightness(20);
+  leds.setBrightness(LED_BRIGHTNESS);
   leds.show();
 #endif
 
