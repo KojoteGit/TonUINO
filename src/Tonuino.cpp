@@ -28,7 +28,7 @@
 #ifdef LED_USE
 #define NUM_LEDS 7
 #define LED_DATA_PIN 7
-#define LED_BRIGHTNESS 64 // max 255
+#define LED_BRIGHTNESS 32 // max 255
 static Adafruit_NeoPixel leds(NUM_LEDS, LED_DATA_PIN, NEO_GRB + NEO_KHZ800);
 // Zählvarbiablen
 uint8_t led_loopCountdown;       // Runterzählen der Loops
@@ -38,14 +38,17 @@ uint8_t led_currentColorOfCycle;
 
 #define NUM_COLORS 7
 static uint32_t ColorCycle[NUM_COLORS]{
-    leds.Color(255, 0, 0),     //rot
     leds.Color(0, 255, 0),     //grün
     leds.Color(0, 0, 255),     //blau
     leds.Color(255, 255, 0),   //gelb
-    leds.Color(0, 255, 255),   //cyan
+    leds.Color(255, 165, 0),   //orange
     leds.Color(255, 255, 255), //weiß
-    leds.Color(255, 165, 0)    //orange
+    leds.Color(161, 70, 255),  //lila
+    leds.Color(252, 15, 192)   //rosa
 };
+
+static const uint32_t LedColorBatteryLow(leds.Color(255,0,0));
+static const uint32_t LedColorPaused(leds.Color(0,255,0));
 
 void led_process_cycle();
 #endif
@@ -1213,14 +1216,16 @@ void loop() {
       }
       else
       {
+        //wenn nichts abgespielt wird, mittlere LED soll leuchten
         leds.clear();
+        leds.setPixelColor(0,LedColorPaused);
         leds.show();
       }
     }
     else {
       // wenn Akkuspannung zu gering, dann nur mittlere LED in rot darstellen
       leds.clear();
-      leds.setPixelColor(0, leds.Color(255,0,0));
+      leds.setPixelColor(0, LedColorBatteryLow);
       leds.show();
     }
 
