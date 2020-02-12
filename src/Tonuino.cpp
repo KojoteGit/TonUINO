@@ -32,9 +32,10 @@
 static Adafruit_NeoPixel leds(NUM_LEDS, LED_DATA_PIN, NEO_GRB + NEO_KHZ800);
 // Zählvarbiablen
 uint8_t led_loopCountdown;       // Runterzählen der Loops
-uint8_t led_LoopCountWait = 255; // Definierte Anzahl wieviele Loops runtergezählt werden sollen, also wie lange gewartet wird (Max 255)
-uint8_t led_animationCountdown;  // Wie oft die einmalige Animation ausgeführt wird bevor es zurück in die Hauptschleife (Animationsmodus 0) geht
+static const uint8_t led_LoopCountWait = 255; // Definierte Anzahl wieviele Loops runtergezählt werden sollen, also wie lange gewartet wird (Max 255)
 uint8_t led_currentColorOfCycle;
+
+uint8_t led_currentNode = 0;
 
 #define NUM_COLORS 7
 static uint32_t ColorCycle[NUM_COLORS]{
@@ -51,6 +52,18 @@ static const uint32_t LedColorBatteryLow(leds.Color(255,0,0));
 static const uint32_t LedColorPaused(leds.Color(0,255,0));
 
 void led_process_cycle();
+
+enum LED_MODE {
+  LED_MODE_COLOR = 1,
+  LED_MODE_RANDOM = 2,
+  LED_MODE_OFF = 0
+};
+#define LED_MODE_COUNT 3
+
+uint8_t led_current_mode = LED_MODE_RANDOM;
+
+#define LED_BUTTON_PIN A5
+void ledButtonPressed();
 #endif
 
 // uncomment the below line to enable five button support
@@ -130,9 +143,9 @@ bool setupFolder(folderSettings * theFolder) ;
 #define BATTERYCHECK 1
 #ifdef BATTERYCHECK
 #define VOLTAGE_REFERENCE_VIN 4.99
-#define VOLTAGE_PIN A5
+#define VOLTAGE_PIN A6
 #define VOLTAGE_NUM_SAMPLES 10
-#define VOLTAGE_MIN_WARNING 3.3
+#define VOLTAGE_MIN_WARNING 3.5 //3.3
 boolean wasVoltageWarned = false;
 float getVoltage();
 #endif
@@ -756,6 +769,11 @@ bool ignoreButtonFour = false;
 bool ignoreButtonFive = false;
 #endif
 
+#ifdef LED_USE
+Button ledButton(LED_BUTTON_PIN);
+bool ignoreLedButton = false;
+#endif
+
 /// Funktionen für den Standby Timer (z.B. über Pololu-Switch oder Mosfet)
 
 void setstandbyTimer() {
@@ -889,6 +907,8 @@ void setup() {
   leds.clear();
   leds.setBrightness(LED_BRIGHTNESS);
   leds.show();
+  pinMode(LED_BUTTON_PIN, INPUT_PULLUP);
+  ledButton.begin();
 #endif
 
  // play ready sound
@@ -902,6 +922,9 @@ void readButtons() {
 #ifdef FIVEBUTTONS
   buttonFour.read();
   buttonFive.read();
+#endif
+#ifdef LED_USE
+  ledButton.read();
 #endif
 }
 
@@ -1228,7 +1251,9 @@ void loop() {
       leds.setPixelColor(0, LedColorBatteryLow);
       leds.show();
     }
-
+    if (ledButton.wasReleased()) {
+      ledButtonPressed();
+    }
 #endif
 
   } while (!mfrc522.PICC_IsNewCardPresent());
@@ -1967,21 +1992,44 @@ void led_process_cycle()
 {
   if (led_loopCountdown == 0)
   {
-    leds.clear();
-    for (int i = 0; i < NUM_LEDS; i++)
-    {
-      leds.setPixelColor(i, ColorCycle[led_currentColorOfCycle]);
+    if (led_current_mode == LED_MODE_COLOR) {
+      leds.clear();
+      for (int i = 0; i < NUM_LEDS; i++)
+      {
+        leds.setPixelColor(i, ColorCycle[led_currentColorOfCycle]);
+        leds.show();
+      }
+      led_currentColorOfCycle++;
+
+      led_loopCountdown = led_LoopCountWait;
+
+      if (led_currentColorOfCycle == NUM_COLORS)
+      {
+        led_currentColorOfCycle = 0;
+      }
+    }
+    else if (led_current_mode == LED_MODE_RANDOM) {
+      leds.clear();
+      if (led_currentNode++ >= NUM_COLORS) {
+        led_currentNode =0;
+      }
+      leds.setPixelColor(led_currentNode, leds.Color(random(0,255), random(0,255), random(0,255)));
       leds.show();
     }
-    led_currentColorOfCycle++;
-
-    led_loopCountdown = led_LoopCountWait;
-
-    if (led_currentColorOfCycle == NUM_COLORS)
-    {
-      led_currentColorOfCycle = 0;
+    else if (led_current_mode == LED_MODE_OFF) {
+      leds.clear();
+      leds.show();
     }
   }
   led_loopCountdown--;
+}
+
+void ledButtonPressed() {
+  if (led_current_mode++ == LED_MODE_COUNT-1) {
+    led_current_mode =0;
+  }
+  Serial.print("LED MODE: ");
+  Serial.println(led_current_mode);
+  led_loopCountdown = 0;
 }
 #endif
