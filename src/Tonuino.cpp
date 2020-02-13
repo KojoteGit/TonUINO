@@ -32,7 +32,7 @@
 static Adafruit_NeoPixel leds(NUM_LEDS, LED_DATA_PIN, NEO_GRB + NEO_KHZ800);
 // Zählvarbiablen
 uint8_t led_loopCountdown;       // Runterzählen der Loops
-static const uint8_t led_LoopCountWait = 255; // Definierte Anzahl wieviele Loops runtergezählt werden sollen, also wie lange gewartet wird (Max 255)
+uint8_t led_LoopCountWait = 255; // Definierte Anzahl wieviele Loops runtergezählt werden sollen, also wie lange gewartet wird (Max 255)
 uint8_t led_currentColorOfCycle;
 
 uint8_t led_currentNode = 0;
@@ -54,13 +54,14 @@ static const uint32_t LedColorPaused(leds.Color(0,255,0));
 void led_process_cycle();
 
 enum LED_MODE {
-  LED_MODE_COLOR = 1,
-  LED_MODE_RANDOM = 2,
-  LED_MODE_OFF = 0
+  LED_MODE_OFF,
+  LED_MODE_COLOR,
+  //LED_MODE_RANDOM,
+  LED_MODE_RANDOM2,
+  LED_MODE_COUNT
 };
-#define LED_MODE_COUNT 3
 
-uint8_t led_current_mode = LED_MODE_RANDOM;
+uint8_t led_current_mode = LED_MODE_OFF;
 
 #define LED_BUTTON_PIN A5
 void ledButtonPressed();
@@ -1992,6 +1993,14 @@ void led_process_cycle()
 {
   if (led_loopCountdown == 0)
   {
+    // general 
+    if (led_currentNode++ == NUM_LEDS-1) {
+        led_currentNode =0;
+      }
+    led_loopCountdown = led_LoopCountWait;
+
+    // select on current led mode
+    #ifdef LED_MODE_COLOR
     if (led_current_mode == LED_MODE_COLOR) {
       leds.clear();
       for (int i = 0; i < NUM_LEDS; i++)
@@ -2001,25 +2010,33 @@ void led_process_cycle()
       }
       led_currentColorOfCycle++;
 
-      led_loopCountdown = led_LoopCountWait;
-
       if (led_currentColorOfCycle == NUM_COLORS)
       {
         led_currentColorOfCycle = 0;
       }
     }
+    #endif
+    #ifdef LED_MODE_RANDOM
     else if (led_current_mode == LED_MODE_RANDOM) {
       leds.clear();
-      if (led_currentNode++ >= NUM_COLORS) {
-        led_currentNode =0;
-      }
       leds.setPixelColor(led_currentNode, leds.Color(random(0,255), random(0,255), random(0,255)));
       leds.show();
     }
+    #endif
+    #ifdef LED_MODE_OFF
     else if (led_current_mode == LED_MODE_OFF) {
       leds.clear();
       leds.show();
     }
+    #endif
+    #ifdef LED_MODE_RANDOM2
+    else if (led_current_mode == LED_MODE_RANDOM2) {
+      leds.clear();
+      leds.setPixelColor(led_currentNode, ColorCycle[random(0,NUM_COLORS)]);
+      leds.show();
+      led_LoopCountWait = 128;
+    }
+    #endif
   }
   led_loopCountdown--;
 }
