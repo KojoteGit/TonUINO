@@ -61,10 +61,7 @@ enum LED_MODE {
   LED_MODE_COUNT
 };
 
-uint8_t led_current_mode = LED_MODE_OFF;
-
-#define LED_BUTTON_PIN A5
-void ledButtonPressed();
+uint8_t led_current_mode = LED_MODE_RANDOM2;
 #endif
 
 // uncomment the below line to enable five button support
@@ -144,7 +141,7 @@ bool setupFolder(folderSettings * theFolder) ;
 #define BATTERYCHECK 1
 #ifdef BATTERYCHECK
 #define VOLTAGE_REFERENCE_VIN 4.99
-#define VOLTAGE_PIN A6
+#define VOLTAGE_PIN A5
 #define VOLTAGE_NUM_SAMPLES 10
 #define VOLTAGE_MIN_WARNING 3.5 //3.3
 boolean wasVoltageWarned = false;
@@ -770,10 +767,6 @@ bool ignoreButtonFour = false;
 bool ignoreButtonFive = false;
 #endif
 
-#ifdef LED_USE
-Button ledButton(LED_BUTTON_PIN);
-bool ignoreLedButton = false;
-#endif
 
 /// Funktionen für den Standby Timer (z.B. über Pololu-Switch oder Mosfet)
 
@@ -908,8 +901,6 @@ void setup() {
   leds.clear();
   leds.setBrightness(LED_BRIGHTNESS);
   leds.show();
-  pinMode(LED_BUTTON_PIN, INPUT_PULLUP);
-  ledButton.begin();
 #endif
 
  // play ready sound
@@ -923,9 +914,6 @@ void readButtons() {
 #ifdef FIVEBUTTONS
   buttonFour.read();
   buttonFive.read();
-#endif
-#ifdef LED_USE
-  ledButton.read();
 #endif
 }
 
@@ -1251,9 +1239,6 @@ void loop() {
       leds.clear();
       leds.setPixelColor(0, LedColorBatteryLow);
       leds.show();
-    }
-    if (ledButton.wasReleased()) {
-      ledButtonPressed();
     }
 #endif
 
@@ -2000,7 +1985,6 @@ void led_process_cycle()
     led_loopCountdown = led_LoopCountWait;
 
     // select on current led mode
-    #ifdef LED_MODE_COLOR
     if (led_current_mode == LED_MODE_COLOR) {
       leds.clear();
       for (int i = 0; i < NUM_LEDS; i++)
@@ -2015,38 +1999,24 @@ void led_process_cycle()
         led_currentColorOfCycle = 0;
       }
     }
-    #endif
-    #ifdef LED_MODE_RANDOM
+    /*
     else if (led_current_mode == LED_MODE_RANDOM) {
       leds.clear();
       leds.setPixelColor(led_currentNode, leds.Color(random(0,255), random(0,255), random(0,255)));
       leds.show();
-    }
-    #endif
-    #ifdef LED_MODE_OFF
+    } 
+    */
     else if (led_current_mode == LED_MODE_OFF) {
       leds.clear();
       leds.show();
     }
-    #endif
-    #ifdef LED_MODE_RANDOM2
     else if (led_current_mode == LED_MODE_RANDOM2) {
       leds.clear();
       leds.setPixelColor(led_currentNode, ColorCycle[random(0,NUM_COLORS)]);
       leds.show();
       led_LoopCountWait = 128;
     }
-    #endif
   }
   led_loopCountdown--;
-}
-
-void ledButtonPressed() {
-  if (led_current_mode++ == LED_MODE_COUNT-1) {
-    led_current_mode =0;
-  }
-  Serial.print("LED MODE: ");
-  Serial.println(led_current_mode);
-  led_loopCountdown = 0;
 }
 #endif
