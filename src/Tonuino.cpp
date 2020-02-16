@@ -30,14 +30,8 @@
 #define LED_DATA_PIN 7
 #define LED_BRIGHTNESS 32 // max 255
 static Adafruit_NeoPixel leds(NUM_LEDS, LED_DATA_PIN, NEO_GRB + NEO_KHZ800);
-// Zählvarbiablen
-uint8_t led_loopCountdown;       // Runterzählen der Loops
-uint8_t led_LoopCountWait = 255; // Definierte Anzahl wieviele Loops runtergezählt werden sollen, also wie lange gewartet wird (Max 255)
-uint8_t led_currentColorOfCycle;
 
-uint8_t led_currentNode = 0;
-
-#define NUM_COLORS 7
+#define NUM_COLORS 10
 static uint32_t ColorCycle[NUM_COLORS]{
     leds.Color(0, 255, 0),     //grün
     leds.Color(0, 0, 255),     //blau
@@ -45,23 +39,23 @@ static uint32_t ColorCycle[NUM_COLORS]{
     leds.Color(255, 165, 0),   //orange
     leds.Color(255, 255, 255), //weiß
     leds.Color(161, 70, 255),  //lila
-    leds.Color(252, 15, 192)   //rosa
+    leds.Color(252, 15, 192),  //rosa
+    leds.Color(255, 0, 0),     //rot
+    leds.Color(160, 82, 45),   // siennabraun
+    leds.Color(0, 0, 128)      //marineblau
 };
 
 static const uint32_t LedColorBatteryLow(leds.Color(255,0,0));
 static const uint32_t LedColorPaused(leds.Color(0,255,0));
 
-void led_process_cycle();
-
-enum LED_MODE {
-  LED_MODE_OFF,
-  LED_MODE_COLOR,
-  //LED_MODE_RANDOM,
-  LED_MODE_RANDOM2,
-  LED_MODE_COUNT
-};
-
-uint8_t led_current_mode = LED_MODE_RANDOM2;
+uint8_t led_currentCrossFadeStep=0;
+boolean ledIsFading=false;
+uint32_t led_NextTargetColor;
+uint32_t led_LastColor;
+uint8_t ledNextNode=0;
+uint8_t ledLastNode=0;
+uint32_t nextCrossFadeColor(const uint32_t startColor, const uint32_t endColor, const uint8_t currentStep);
+void loopLed();
 #endif
 
 // uncomment the below line to enable five button support
@@ -1224,7 +1218,7 @@ void loop() {
     if (!wasVoltageWarned) {
       if (isPlaying())
       {
-        led_process_cycle();
+        loopLed();
       }
       else
       {
@@ -1254,6 +1248,10 @@ void loop() {
 
   if (readCard(&myCard) == true) {
     if (myCard.cookie == cardCookie && myCard.nfcFolderSettings.folder != 0 && myCard.nfcFolderSettings.mode != 0) {
+      #ifdef LED_USE
+      leds.clear();
+      leds.show();
+      #endif
       playFolder();
     }
 
@@ -1973,50 +1971,46 @@ float getVoltage() {
 }
 
 #ifdef LED_USE
-
-void led_process_cycle()
-{
-  if (led_loopCountdown == 0)
-  {
-    // general 
-    if (led_currentNode++ == NUM_LEDS-1) {
-        led_currentNode =0;
-      }
-    led_loopCountdown = led_LoopCountWait;
-
-    // select on current led mode
-    if (led_current_mode == LED_MODE_COLOR) {
-      leds.clear();
-      for (int i = 0; i < NUM_LEDS; i++)
-      {
-        leds.setPixelColor(i, ColorCycle[led_currentColorOfCycle]);
-        leds.show();
-      }
-      led_currentColorOfCycle++;
-
-      if (led_currentColorOfCycle == NUM_COLORS)
-      {
-        led_currentColorOfCycle = 0;
-      }
+void loopLed() {
+  if (!ledIsFading) {
+    // next Color and LED
+    ledLastNode = ledNextNode;
+    if (ledNextNode++ == NUM_LEDS-1) {
+      ledNextNode = 0;
     }
-    /*
-    else if (led_current_mode == LED_MODE_RANDOM) {
-      leds.clear();
-      leds.setPixelColor(led_currentNode, leds.Color(random(0,255), random(0,255), random(0,255)));
-      leds.show();
-    } 
-    */
-    else if (led_current_mode == LED_MODE_OFF) {
-      leds.clear();
-      leds.show();
-    }
-    else if (led_current_mode == LED_MODE_RANDOM2) {
-      leds.clear();
-      leds.setPixelColor(led_currentNode, ColorCycle[random(0,NUM_COLORS)]);
-      leds.show();
-      led_LoopCountWait = 128;
-    }
+    led_NextTargetColor = ColorCycle[random(0,NUM_COLORS)];
+    led_LastColor = leds.getPixelColor(ledLastNode);
+    ledIsFading = true;
   }
-  led_loopCountdown--;
+  else if (ledIsFading) {
+    leds.setPixelColor(ledLastNode, nextCrossFadeColor(led_LastColor, leds.Color(0,0,0), led_currentCrossFadeStep));
+    leds.setPixelColor(ledNextNode, nextCrossFadeColor(leds.Color(0,0,0), led_NextTargetColor, led_currentCrossFadeStep));
+    leds.show();
+    if (led_currentCrossFadeStep++ >= 255) {
+      led_currentCrossFadeStep = 0;
+      ledIsFading = false;
+      //Serial.println("Fading finished");
+    }
+  } 
+}
+
+uint32_t nextCrossFadeColor(const uint32_t startColor, const uint32_t endColor, const uint8_t currentStep) {
+  byte red;
+  byte green;
+  byte blue; 
+
+  byte startRed = (startColor >> 16) & 0xff;
+  byte startGreen = (startColor >> 8) & 0xff;
+  byte startBlue = startColor & 0xff;
+
+  byte endRed = (endColor >> 16) & 0xff;
+  byte endGreen = (endColor >> 8) & 0xff;
+  byte endBlue = endColor & 0xff;
+
+  red = map(min(currentStep, 255), 0, 255, startRed, endRed);
+  green = map(min(currentStep, 255), 0, 255, startGreen, endGreen);
+  blue = map(min(currentStep, 255), 0, 255, startBlue, endBlue);
+
+return leds.Color(red, green, blue);
 }
 #endif
