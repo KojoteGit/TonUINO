@@ -146,69 +146,38 @@ float getVoltage();
 //
 class Mp3Notify {
   public:
-    /*static void OnError(uint16_t errorCode) {
+    static void OnError(uint16_t errorCode) {
       // see DfMp3_Error for code meaning
       Serial.println();
       Serial.print("Com Error ");
       Serial.println(errorCode);
-    } */
-    static void OnError(uint16_t returnValue) {
-      Serial.print(F("mp3 | "));
-      switch (returnValue) {
-        case DfMp3_Error_Busy:
-          Serial.print(F("busy"));
-          break;
-        case DfMp3_Error_Sleeping:
-          Serial.print(F("sleep"));
-          break;
-        case DfMp3_Error_SerialWrongStack:
-          Serial.print(F("serial stack"));
-          break;
-        case DfMp3_Error_CheckSumNotMatch:
-          Serial.print(F("checksum"));
-          break;
-        case DfMp3_Error_FileIndexOut:
-          Serial.print(F("file index"));
-          break;
-        case DfMp3_Error_FileMismatch:
-          Serial.print(F("file mismatch"));
-          break;
-        case DfMp3_Error_Advertise:
-          Serial.print(F("advertise"));
-          break;
-        case DfMp3_Error_General:
-          Serial.print(F("general"));
-          break;
-        default:
-          Serial.print(F("unknown"));
-          break;
-      }
-      Serial.println(F(" error"));
-    }
-    static void OnPlayFinished(uint16_t track) {
+    } 
+
+    static void PrintlnSourceAction(DfMp3_PlaySources source, const char* action) {
+       if (source & DfMp3_PlaySources_Sd) Serial.print("SD Karte ");
+       if (source & DfMp3_PlaySources_Usb) Serial.print("USB ");
+       if (source & DfMp3_PlaySources_Flash) Serial.print("Flash ");
+       Serial.println(action);
+     }
+
+    static void OnPlayFinished(DfMp3_PlaySources source, uint16_t track) {
       //      Serial.print("Track beendet");
       //      Serial.println(track);
       //      delay(100);
       nextTrack(track);
     }
-    static void OnCardOnline(uint16_t code) {
-      Serial.println(F("SD Karte online "));
-    }
-    static void OnCardInserted(uint16_t code) {
-      Serial.println(F("SD Karte bereit "));
-    }
-    static void OnCardRemoved(uint16_t code) {
-      Serial.println(F("SD Karte entfernt "));
-    }
-    static void OnUsbOnline(uint16_t code) {
-      Serial.println(F("USB online "));
-    }
-    static void OnUsbInserted(uint16_t code) {
-      Serial.println(F("USB bereit "));
-    }
-    static void OnUsbRemoved(uint16_t code) {
-      Serial.println(F("USB entfernt "));
-    }
+    
+    static void OnPlaySourceOnline(DfMp3_PlaySources source) {
+       PrintlnSourceAction(source, "online");
+     }
+
+     static void OnPlaySourceInserted(DfMp3_PlaySources source) {
+       PrintlnSourceAction(source, "bereit");
+     }
+
+     static void OnPlaySourceRemoved(DfMp3_PlaySources source) {
+       PrintlnSourceAction(source, "entfernt");
+     }
 };
 
 static DFMiniMp3<SoftwareSerial, Mp3Notify> mp3(mySoftwareSerial);
